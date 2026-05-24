@@ -16,9 +16,9 @@ export default async function Home() {
       <section>
         <h1 className="text-2xl font-semibold tracking-tight">Workspaces</h1>
         <p className="mt-1 max-w-2xl text-sm text-neutral-400">
-          A workspace points at a folder on disk. Agents in that workspace
-          inherit the folder as their cwd. Skills, settings, and hooks come
-          from the folder&apos;s <code>.claude/</code> config.
+          A workspace spans one or more folders on disk. Each agent picks
+          which folder to run in. Skills, settings, and hooks come from
+          that folder&apos;s <code>.claude/</code> config.
         </p>
       </section>
 

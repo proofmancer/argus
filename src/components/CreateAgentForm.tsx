@@ -3,8 +3,15 @@
 import { useCallback, useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Skill } from '@/lib/skills'
+import type { WorkspaceDirectory } from '@/lib/schema'
 
-export function CreateAgentForm({ workspaceId }: { workspaceId: string }) {
+export function CreateAgentForm({
+  workspaceId,
+  directories,
+}: {
+  workspaceId: string
+  directories: WorkspaceDirectory[]
+}) {
   const [name, setName] = useState('')
   const [systemPrompt, setSystemPrompt] = useState('')
   const [model, setModel] = useState('')
@@ -15,6 +22,9 @@ export function CreateAgentForm({ workspaceId }: { workspaceId: string }) {
   )
   const [availableSkills, setAvailableSkills] = useState<Skill[]>([])
   const [skillsError, setSkillsError] = useState<string | null>(null)
+  // Empty string => "use the workspace's default directory" (null on
+  // the wire). Only meaningful when there is more than one directory.
+  const [directoryId, setDirectoryId] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
   const router = useRouter()
@@ -71,6 +81,7 @@ export function CreateAgentForm({ workspaceId }: { workspaceId: string }) {
         systemPrompt: systemPrompt.trim(),
         model: model.trim() || null,
         skills: Array.from(selectedSkills),
+        directoryId: directoryId || null,
       }),
     })
     if (!res.ok) {
@@ -82,6 +93,7 @@ export function CreateAgentForm({ workspaceId }: { workspaceId: string }) {
     setSystemPrompt('')
     setModel('')
     setSelectedSkills(new Set())
+    setDirectoryId('')
     startTransition(() => router.refresh())
   }
 
@@ -111,18 +123,39 @@ export function CreateAgentForm({ workspaceId }: { workspaceId: string }) {
           className="rounded border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm focus:border-neutral-600 focus:outline-none"
         />
       </label>
-      <label className="flex flex-col gap-1">
-        <span className="text-xs uppercase tracking-[0.16em] text-neutral-500">
-          Model (optional, e.g. opus / sonnet)
-        </span>
-        <input
-          type="text"
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          placeholder="sonnet"
-          className="rounded border border-neutral-800 bg-neutral-950 px-3 py-2 font-mono text-sm focus:border-neutral-600 focus:outline-none"
-        />
-      </label>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1">
+          <span className="text-xs uppercase tracking-[0.16em] text-neutral-500">
+            Model (optional, e.g. opus / sonnet)
+          </span>
+          <input
+            type="text"
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            placeholder="sonnet"
+            className="rounded border border-neutral-800 bg-neutral-950 px-3 py-2 font-mono text-sm focus:border-neutral-600 focus:outline-none"
+          />
+        </label>
+        {directories.length > 1 && (
+          <label className="flex flex-col gap-1">
+            <span className="text-xs uppercase tracking-[0.16em] text-neutral-500">
+              Directory (which cwd the agent runs in)
+            </span>
+            <select
+              value={directoryId}
+              onChange={(e) => setDirectoryId(e.target.value)}
+              className="rounded border border-neutral-800 bg-neutral-950 px-3 py-2 font-mono text-sm focus:border-neutral-600 focus:outline-none"
+            >
+              <option value="">default (first)</option>
+              {directories.map((dir) => (
+                <option key={dir.id} value={dir.id}>
+                  {dir.label ? `${dir.label}: ${dir.path}` : dir.path}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
 
       <fieldset className="flex flex-col gap-2">
         <legend className="text-xs uppercase tracking-[0.16em] text-neutral-500">

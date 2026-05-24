@@ -21,6 +21,13 @@ import path from 'node:path'
 export type AgentRunOptions = {
   prompt: string
   cwd: string
+  /**
+   * Directory to read shared MEMORY.md from. Defaults to `cwd` if not
+   * set. Used by workspaces with multiple directories: the run cwd may
+   * be a non-default directory, but memory stays anchored to the
+   * workspace's default cwd so it's the same for every agent.
+   */
+  memoryCwd?: string
   systemPrompt?: string
   model?: string | null
   skills?: string[]
@@ -45,7 +52,10 @@ export async function* runAgent(opts: AgentRunOptions) {
   // Compose the effective system prompt: workspace shared memory
   // (if any) first, then the agent's own system prompt. Wrapped in
   // labeled fences so the agent can tell where each layer ends.
-  const memory = await readWorkspaceMemory(opts.cwd)
+  // memoryCwd lets a workspace with multiple directories keep one
+  // shared memory at the default directory regardless of where the
+  // agent actually runs.
+  const memory = await readWorkspaceMemory(opts.memoryCwd ?? opts.cwd)
   const own = (opts.systemPrompt ?? '').trim()
   const parts: string[] = []
   if (memory) {

@@ -6,7 +6,9 @@ import { CreateAgentForm } from '@/components/CreateAgentForm'
 import { AgentPanel } from '@/components/AgentPanel'
 import { SkillsGrid } from '@/components/SkillsGrid'
 import { SharedMemoryForm } from '@/components/SharedMemoryForm'
+import { WorkspaceDirectories } from '@/components/WorkspaceDirectories'
 import { readWorkspaceMemory } from '@/lib/claude'
+import { listDirectories } from '@/lib/directories'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,6 +35,11 @@ export default async function WorkspacePage({
   // string, handled silently by readWorkspaceMemory.
   const memoryContent = await readWorkspaceMemory(workspace.cwd)
 
+  // Pre-load the directory list so the Directories section, the
+  // CreateAgentForm dropdown, and the per-agent chip render with no
+  // client-side fetch waterfall.
+  const directories = await listDirectories(workspace.id)
+
   return (
     <div className="flex flex-col gap-10">
       <section>
@@ -46,7 +53,24 @@ export default async function WorkspacePage({
           {workspace.name}
         </h1>
         <div className="mt-1 font-mono text-xs text-neutral-500">
-          {workspace.cwd}
+          {directories.length} {directories.length === 1 ? 'directory' : 'directories'}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-neutral-500">
+          Directories
+        </h2>
+        <p className="mt-1 max-w-2xl text-xs text-neutral-500">
+          Working directories this workspace spans. Each agent picks one
+          as its cwd. The first one is the default; new agents that
+          don&apos;t pick a directory run there.
+        </p>
+        <div className="mt-3 max-w-3xl">
+          <WorkspaceDirectories
+            workspaceId={workspace.id}
+            initialDirectories={directories}
+          />
         </div>
       </section>
 
@@ -88,7 +112,11 @@ export default async function WorkspacePage({
             </div>
           )}
           {agents.map((agent) => (
-            <AgentPanel key={agent.id} agent={agent} />
+            <AgentPanel
+              key={agent.id}
+              agent={agent}
+              directories={directories}
+            />
           ))}
         </div>
       </section>
@@ -98,7 +126,10 @@ export default async function WorkspacePage({
           Create agent
         </h2>
         <div className="mt-3 max-w-2xl rounded-lg border border-neutral-800 bg-neutral-900/40 p-4">
-          <CreateAgentForm workspaceId={workspace.id} />
+          <CreateAgentForm
+            workspaceId={workspace.id}
+            directories={directories}
+          />
         </div>
       </section>
     </div>
