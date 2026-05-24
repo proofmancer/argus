@@ -42,10 +42,12 @@ export default function RootLayout({
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
             <Link
               href="/"
-              className="flex items-center gap-2.5 text-sm font-semibold lowercase"
+              className="flex items-center gap-2.5 font-semibold lowercase"
             >
               <ArgusMark className="h-5 w-5 text-amber-500" />
-              <span className="tracking-tight">argus</span>
+              <span className="text-xl leading-none tracking-tight">
+                argus
+              </span>
             </Link>
           </div>
         </header>
