@@ -5,6 +5,8 @@ import { desc, eq } from 'drizzle-orm'
 import { CreateAgentForm } from '@/components/CreateAgentForm'
 import { AgentPanel } from '@/components/AgentPanel'
 import { SkillsGrid } from '@/components/SkillsGrid'
+import { SharedMemoryForm } from '@/components/SharedMemoryForm'
+import { readWorkspaceMemory } from '@/lib/claude'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,6 +28,11 @@ export default async function WorkspacePage({
     .where(eq(schema.agents.workspaceId, id))
     .orderBy(desc(schema.agents.createdAt))
 
+  // Pre-load the workspace's shared memory so the editor renders
+  // with the current contents on first paint. Missing file -> empty
+  // string, handled silently by readWorkspaceMemory.
+  const memoryContent = await readWorkspaceMemory(workspace.cwd)
+
   return (
     <div className="flex flex-col gap-10">
       <section>
@@ -40,6 +47,24 @@ export default async function WorkspacePage({
         </h1>
         <div className="mt-1 font-mono text-xs text-neutral-500">
           {workspace.cwd}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-neutral-500">
+          Shared memory
+        </h2>
+        <p className="mt-1 max-w-2xl text-xs text-neutral-500">
+          Prepended to every agent&apos;s system prompt in this workspace.
+          Lives at{' '}
+          <code className="font-mono text-neutral-400">.argus/MEMORY.md</code>{' '}
+          inside the workspace directory. Save empty to clear.
+        </p>
+        <div className="mt-3 max-w-3xl">
+          <SharedMemoryForm
+            workspaceId={workspace.id}
+            initialContent={memoryContent}
+          />
         </div>
       </section>
 
