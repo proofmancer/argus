@@ -1,11 +1,19 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Geist_Mono } from 'next/font/google'
+import localFont from 'next/font/local'
 import Link from 'next/link'
+import { ArgusMark } from '@/components/ArgusMark'
 import './globals.css'
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
+
+// Stack Sans Notch is the brand display + UI typeface. Variable font
+// covers the full 200..700 weight range from one file, so we register
+// it once and let Tailwind / CSS pick the weight per element.
+const stackSans = localFont({
+  src: './fonts/StackSansNotch-VariableFont_wght.ttf',
+  variable: '--font-stack-sans',
+  display: 'swap',
+  weight: '200 700',
 })
 
 const geistMono = Geist_Mono({
@@ -14,7 +22,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Argus · Claude Code workspace',
+  title: 'argus · claude code workspace',
   description:
     'Local desktop-class workspace for orchestrating Claude Code agents, pinning skills, and watching what they do.',
 }
@@ -27,31 +35,18 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${stackSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-neutral-950 text-neutral-100 flex flex-col">
         <header className="border-b border-neutral-800 bg-neutral-950/80 backdrop-blur">
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
             <Link
               href="/"
-              className="flex items-center gap-2 text-sm font-semibold"
+              className="flex items-center gap-2.5 text-sm font-semibold lowercase"
             >
-              <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
-              <span className="tracking-tight">Argus</span>
-              <span className="text-xs font-normal text-neutral-500">
-                claude code workspace
-              </span>
+              <ArgusMark className="h-5 w-5 text-amber-500" />
+              <span className="tracking-tight">argus</span>
             </Link>
-            <nav className="flex items-center gap-4 text-xs text-neutral-400">
-              <a
-                href="https://github.com/anthropics/claude-code"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-neutral-200"
-              >
-                claude-code docs
-              </a>
-            </nav>
           </div>
         </header>
         <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-8">

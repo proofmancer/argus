@@ -1,8 +1,22 @@
-# Argus
+<p align="center">
+  <img src="./public/argus-mark.svg" width="80" alt="argus" />
+</p>
 
-A local web app that orchestrates Claude Code agents from a real UI.
+<h1 align="center">argus</h1>
 
-Workspaces, persistent agent personas, pinned skills, live output streams — all wrapping the `claude` CLI you already have. Uses your existing Max plan, no Anthropic API key required.
+<p align="center">
+  A local web app that orchestrates Claude Code agents from a real UI.
+</p>
+
+<p align="center">
+  <a href="https://github.com/proofmancer/argus/blob/main/LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License" />
+  </a>
+</p>
+
+---
+
+Workspaces, persistent agent personas, pinned skills, live output streams, all wrapping the `claude` CLI you already have. Uses your existing Max plan, no Anthropic API key required.
 
 Named after Argus Panoptes, the many-eyed giant who watched everything.
 
