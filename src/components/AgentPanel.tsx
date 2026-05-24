@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import type { Agent } from '@/lib/schema'
+import { RunHistory } from './RunHistory'
 
 type StreamEvent =
   | { type: 'run:start'; runId: string }
@@ -16,6 +17,9 @@ export function AgentPanel({ agent }: { agent: Agent }) {
   const [prompt, setPrompt] = useState('')
   const [events, setEvents] = useState<StreamEvent[]>([])
   const [running, setRunning] = useState(false)
+  // Bumped each time a live run ends, so RunHistory re-fetches the
+  // newly persisted row without a full page reload.
+  const [historyVersion, setHistoryVersion] = useState(0)
   const outputRef = useRef<HTMLDivElement>(null)
 
   async function run() {
@@ -75,6 +79,7 @@ export function AgentPanel({ agent }: { agent: Agent }) {
       ])
     } finally {
       setRunning(false)
+      setHistoryVersion((v) => v + 1)
     }
   }
 
@@ -156,6 +161,8 @@ export function AgentPanel({ agent }: { agent: Agent }) {
           ))}
         </div>
       )}
+
+      <RunHistory agentId={agent.id} version={historyVersion} />
     </div>
   )
 }
