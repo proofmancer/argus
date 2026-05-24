@@ -41,8 +41,20 @@ export type AgentRunOptions = {
  */
 export async function* runAgent(opts: AgentRunOptions) {
   const args = ['-p', opts.prompt, '--output-format=stream-json', '--verbose']
-  if (opts.systemPrompt && opts.systemPrompt.trim()) {
-    args.push('--append-system-prompt', opts.systemPrompt)
+
+  // Compose the effective system prompt: workspace shared memory
+  // (if any) first, then the agent's own system prompt. Wrapped in
+  // labeled fences so the agent can tell where each layer ends.
+  const memory = await readWorkspaceMemory(opts.cwd)
+  const own = (opts.systemPrompt ?? '').trim()
+  const parts: string[] = []
+  if (memory) {
+    parts.push(`# workspace memory\n${memory}\n# end workspace memory`)
+  }
+  if (own) parts.push(own)
+  const effectiveSystemPrompt = parts.join('\n\n')
+  if (effectiveSystemPrompt) {
+    args.push('--append-system-prompt', effectiveSystemPrompt)
   }
   if (opts.model && opts.model.trim()) {
     args.push('--model', opts.model)
@@ -167,6 +179,29 @@ export async function* runAgent(opts: AgentRunOptions) {
   }
 
   yield { type: 'exit', code: exitCode ?? 0 }
+}
+
+/**
+ * Path on disk where a workspace's shared memory lives. Sibling to
+ * .claude/, scoped to argus so it doesn't collide with anything else
+ * the workspace might be using.
+ */
+export function workspaceMemoryPath(cwd: string): string {
+  return path.join(cwd, '.argus', 'MEMORY.md')
+}
+
+/**
+ * Read the workspace's shared memory file. Returns an empty string if
+ * the file is missing, empty, or unreadable. Trimmed so an all-blank
+ * file behaves the same as no file.
+ */
+export async function readWorkspaceMemory(cwd: string): Promise<string> {
+  try {
+    const raw = await fs.readFile(workspaceMemoryPath(cwd), 'utf8')
+    return raw.trim()
+  } catch {
+    return ''
+  }
 }
 
 /**
