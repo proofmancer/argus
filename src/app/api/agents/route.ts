@@ -44,9 +44,13 @@ export async function POST(req: Request) {
   const skills = Array.isArray(body.skills)
     ? body.skills.filter((s: unknown): s is string => typeof s === 'string')
     : []
+  const directoryId =
+    typeof body.directoryId === 'string' && body.directoryId
+      ? body.directoryId
+      : null
   const [row] = await db
     .insert(schema.agents)
-    .values({ workspaceId, name, systemPrompt, model, skills })
+    .values({ workspaceId, directoryId, name, systemPrompt, model, skills })
     .returning()
   return NextResponse.json({ agent: row }, { status: 201 })
 }

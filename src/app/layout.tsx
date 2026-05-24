@@ -37,12 +37,18 @@ export default function RootLayout({
       lang="en"
       className={`${stackSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-neutral-950 text-neutral-100 flex flex-col">
+      {/* Apply Stack Sans Notch directly on <body> via next/font's
+          .className (sets font-family on the element, no var
+          indirection). The header inherits from this, so the navbar
+          wordmark renders in Stack Sans like the rest of the UI. */}
+      <body
+        className={`${stackSans.className} min-h-full bg-neutral-950 text-neutral-100 flex flex-col`}
+      >
         <header className="border-b border-neutral-800 bg-neutral-950/80 backdrop-blur">
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
             <Link
               href="/"
-              className="flex items-center gap-2.5 font-semibold lowercase"
+              className={`${stackSans.className} flex items-center gap-2.5 font-semibold lowercase`}
             >
               <ArgusMark className="h-5 w-5 text-amber-500" />
               <span className="text-xl leading-none tracking-tight">

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import type { Agent } from '@/lib/schema'
+import type { Agent, WorkspaceDirectory } from '@/lib/schema'
 import { RunHistory } from './RunHistory'
 
 type StreamEvent =
@@ -13,7 +13,20 @@ type StreamEvent =
   | { type: 'raw'; line: string }
   | Record<string, unknown>
 
-export function AgentPanel({ agent }: { agent: Agent }) {
+export function AgentPanel({
+  agent,
+  directories,
+}: {
+  agent: Agent
+  directories: WorkspaceDirectory[]
+}) {
+  // Resolve which directory chip to show: the bound one, or "default"
+  // when nothing is bound (matches resolveAgentCwd's runtime behavior).
+  const boundDir = agent.directoryId
+    ? directories.find((d) => d.id === agent.directoryId)
+    : null
+  const effectiveDir = boundDir ?? directories[0] ?? null
+  const isDefault = !boundDir
   const [prompt, setPrompt] = useState('')
   const [events, setEvents] = useState<StreamEvent[]>([])
   const [running, setRunning] = useState(false)
@@ -103,6 +116,20 @@ export function AgentPanel({ agent }: { agent: Agent }) {
             {agent.model && (
               <span className="rounded bg-neutral-800 px-2 py-0.5 font-mono text-neutral-300">
                 {agent.model}
+              </span>
+            )}
+            {effectiveDir && (
+              <span
+                className={`rounded border px-2 py-0.5 font-mono ${
+                  isDefault
+                    ? 'border-neutral-700 text-neutral-500'
+                    : 'border-amber-900 text-amber-500'
+                }`}
+                title={effectiveDir.path}
+              >
+                {isDefault
+                  ? `${effectiveDir.label || 'default'} (default)`
+                  : effectiveDir.label || effectiveDir.path}
               </span>
             )}
             {(agent.skills ?? []).map((s) => (

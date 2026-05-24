@@ -19,11 +19,35 @@ export const workspaces = sqliteTable('workspaces', {
 })
 
 /**
+ * Workspace directories: a workspace can point at multiple working
+ * directories on disk. Each agent picks one as its cwd (see
+ * agents.directoryId below). The legacy workspaces.cwd column stays
+ * as the "default" directory and gets mirrored into a row here when
+ * the workspace is created (and backfilled on boot for older rows).
+ */
+export const workspaceDirectories = sqliteTable('workspace_directories', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => nanoid(12)),
+  workspaceId: text('workspace_id')
+    .notNull()
+    .references(() => workspaces.id, { onDelete: 'cascade' }),
+  path: text('path').notNull(),
+  label: text('label').default(''),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+})
+
+/**
  * Agents: per-workspace claude-code persona. Has a name, a system
  * prompt that gets prepended to every run, optional model override,
  * and an optional list of skills (skill names that should be active
- * for this agent — written to .claude/settings.local.json when the
+ * for this agent, written to .claude/settings.local.json when the
  * agent runs).
+ *
+ * directoryId binds the agent to one of the workspace's directories.
+ * Null means "use the workspace's first directory at run time".
  */
 export const agents = sqliteTable('agents', {
   id: text('id')
@@ -32,6 +56,10 @@ export const agents = sqliteTable('agents', {
   workspaceId: text('workspace_id')
     .notNull()
     .references(() => workspaces.id, { onDelete: 'cascade' }),
+  directoryId: text('directory_id').references(
+    () => workspaceDirectories.id,
+    { onDelete: 'set null' },
+  ),
   name: text('name').notNull(),
   systemPrompt: text('system_prompt').default(''),
   model: text('model'), // null = use claude default
@@ -68,5 +96,6 @@ export const runs = sqliteTable('runs', {
 })
 
 export type Workspace = typeof workspaces.$inferSelect
+export type WorkspaceDirectory = typeof workspaceDirectories.$inferSelect
 export type Agent = typeof agents.$inferSelect
 export type Run = typeof runs.$inferSelect

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { db, schema } from '@/lib/db'
 import { eq } from 'drizzle-orm'
 import { runAgent, writeAgentSkillConfig } from '@/lib/claude'
+import { resolveAgentCwd } from '@/lib/directories'
 
 export const runtime = 'nodejs'
 // Allow long-running streams; default Vercel limit is short, but we're
@@ -53,9 +54,14 @@ export async function POST(
     )
   }
 
-  // Pin the agent's skills into the workspace's .claude config (best
+  // Resolve which working directory this agent should run in. If the
+  // agent is bound to a directory we use that; otherwise the
+  // workspace's first/default directory; otherwise legacy workspace.cwd.
+  const cwd = await resolveAgentCwd(agent, workspace)
+
+  // Pin the agent's skills into the chosen cwd's .claude config (best
   // effort; failures are non-fatal and surface in stderr instead).
-  await writeAgentSkillConfig(workspace.cwd, agent.skills ?? [])
+  await writeAgentSkillConfig(cwd, agent.skills ?? [])
 
   // Insert a `running` row so we can update it when the stream ends.
   const [run] = await db
@@ -80,7 +86,11 @@ export async function POST(
       try {
         for await (const event of runAgent({
           prompt,
-          cwd: workspace.cwd,
+          cwd,
+          // Memory stays at the workspace's default cwd so every
+          // agent in this workspace gets the same shared context,
+          // regardless of which directory it runs in.
+          memoryCwd: workspace.cwd,
           systemPrompt: agent.systemPrompt ?? '',
           model: agent.model,
           skills: agent.skills ?? [],

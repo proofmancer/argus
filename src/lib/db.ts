@@ -67,9 +67,17 @@ export function ensureMigrated() {
         cwd TEXT NOT NULL,
         created_at INTEGER NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS workspace_directories (
+        id TEXT PRIMARY KEY,
+        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+        path TEXT NOT NULL,
+        label TEXT DEFAULT '',
+        created_at INTEGER NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS agents (
         id TEXT PRIMARY KEY,
         workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+        directory_id TEXT REFERENCES workspace_directories(id) ON DELETE SET NULL,
         name TEXT NOT NULL,
         system_prompt TEXT DEFAULT '',
         model TEXT,
@@ -87,8 +95,39 @@ export function ensureMigrated() {
         ended_at INTEGER
       );
       CREATE INDEX IF NOT EXISTS idx_agents_workspace ON agents(workspace_id);
+      CREATE INDEX IF NOT EXISTS idx_directories_workspace ON workspace_directories(workspace_id);
       CREATE INDEX IF NOT EXISTS idx_runs_agent ON runs(agent_id);
       CREATE INDEX IF NOT EXISTS idx_runs_started ON runs(started_at DESC);
+    `)
+
+    // For databases that predate the multi-directory schema, add the
+    // agents.directory_id column. SQLite errors on duplicate columns,
+    // which we swallow as the post-condition we wanted is satisfied.
+    try {
+      sqlite.exec(
+        `ALTER TABLE agents ADD COLUMN directory_id TEXT REFERENCES workspace_directories(id) ON DELETE SET NULL`,
+      )
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
+      if (!/duplicate column/i.test(msg)) {
+        // eslint-disable-next-line no-console
+        console.warn('argus migrate: ALTER agents add directory_id:', msg)
+      }
+    }
+
+    // Backfill: any workspace without a directory row gets one
+    // mirrored from its legacy cwd, labeled "default". Idempotent.
+    sqlite.exec(`
+      INSERT INTO workspace_directories (id, workspace_id, path, label, created_at)
+      SELECT
+        lower(hex(randomblob(6))),
+        w.id,
+        w.cwd,
+        'default',
+        w.created_at
+      FROM workspaces w
+      LEFT JOIN workspace_directories d ON d.workspace_id = w.id
+      WHERE d.id IS NULL
     `)
   } catch (err) {
     const code =
