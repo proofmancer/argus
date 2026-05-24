@@ -4,6 +4,7 @@ import { db, schema } from '@/lib/db'
 import { desc, eq } from 'drizzle-orm'
 import { CreateAgentForm } from '@/components/CreateAgentForm'
 import { AgentPanel } from '@/components/AgentPanel'
+import { SkillsGrid } from '@/components/SkillsGrid'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,6 +40,15 @@ export default async function WorkspacePage({
         </h1>
         <div className="mt-1 font-mono text-xs text-neutral-500">
           {workspace.cwd}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-neutral-500">
+          Skills
+        </h2>
+        <div className="mt-3">
+          <SkillsGrid workspaceId={workspace.id} />
         </div>
       </section>
 
