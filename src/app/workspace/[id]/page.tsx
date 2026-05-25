@@ -105,9 +105,14 @@ export default async function WorkspacePage({
         <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-neutral-500">
           Agents
         </h2>
-        <div className="mt-3 flex flex-col gap-4">
+        <p className="mt-1 max-w-2xl text-xs text-neutral-500">
+          Each agent runs independently. Hit Run on more than one to
+          watch them work in parallel; Stop sends SIGTERM to that
+          agent&apos;s child without touching the others.
+        </p>
+        <div className="mt-3 grid grid-cols-1 gap-4 xl:grid-cols-2">
           {agents.length === 0 && (
-            <div className="rounded-lg border border-dashed border-neutral-800 p-6 text-sm text-neutral-500">
+            <div className="rounded-lg border border-dashed border-neutral-800 p-6 text-sm text-neutral-500 xl:col-span-2">
               No agents in this workspace yet. Create one below.
             </div>
           )}

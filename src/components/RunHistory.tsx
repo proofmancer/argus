@@ -111,7 +111,7 @@ function RunRow({
   const status = run.status
   const exit = run.exitCode
   const statusColor =
-    status === 'running'
+    status === 'running' || status === 'cancelled'
       ? 'text-amber-400'
       : exit === 0
         ? 'text-green-500'

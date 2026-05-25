@@ -30,15 +30,30 @@ export function AgentPanel({
   const [prompt, setPrompt] = useState('')
   const [events, setEvents] = useState<StreamEvent[]>([])
   const [running, setRunning] = useState(false)
+  // RunId becomes known after the server emits its run:start frame.
+  // The Stop button needs this to address the right child process.
+  const [runId, setRunId] = useState<string | null>(null)
   // Bumped each time a live run ends, so RunHistory re-fetches the
   // newly persisted row without a full page reload.
   const [historyVersion, setHistoryVersion] = useState(0)
   const outputRef = useRef<HTMLDivElement>(null)
 
+  async function stop() {
+    if (!runId) return
+    try {
+      await fetch(`/api/runs/${runId}/stop`, { method: 'POST' })
+    } catch {
+      // Server might be gone or restarted. The run-end frame will
+      // never arrive in that case; the UI just stays in "running"
+      // until the user reloads. Not worth more handling for v1.
+    }
+  }
+
   async function run() {
     if (!prompt.trim() || running) return
     setRunning(true)
     setEvents([])
+    setRunId(null)
     try {
       const res = await fetch(`/api/agents/${agent.id}/run`, {
         method: 'POST',
@@ -70,6 +85,14 @@ export function AgentPanel({
           if (!dataLine) continue
           try {
             const event = JSON.parse(dataLine.slice('data: '.length))
+            if (
+              event &&
+              typeof event === 'object' &&
+              event.type === 'run:start' &&
+              typeof event.runId === 'string'
+            ) {
+              setRunId(event.runId)
+            }
             setEvents((prev) => [...prev, event])
             // Auto-scroll to bottom of output
             requestAnimationFrame(() => {
@@ -92,6 +115,7 @@ export function AgentPanel({
       ])
     } finally {
       setRunning(false)
+      setRunId(null)
       setHistoryVersion((v) => v + 1)
     }
   }
@@ -159,14 +183,26 @@ export function AgentPanel({
           disabled={running}
           className="rounded border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm focus:border-neutral-600 focus:outline-none disabled:opacity-50"
         />
-        <div className="flex justify-between">
-          <button
-            onClick={run}
-            disabled={running || !prompt.trim()}
-            className="rounded bg-amber-500 px-4 py-2 text-sm font-medium text-neutral-950 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {running ? 'running...' : 'Run'}
-          </button>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={run}
+              disabled={running || !prompt.trim()}
+              className="rounded bg-amber-500 px-4 py-2 text-sm font-medium text-neutral-950 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {running ? 'running...' : 'Run'}
+            </button>
+            {running && (
+              <button
+                onClick={stop}
+                disabled={!runId}
+                className="rounded border border-red-900 px-3 py-2 text-sm font-medium text-red-400 transition hover:bg-red-950 disabled:cursor-not-allowed disabled:opacity-50"
+                title={runId ? 'send SIGTERM to the running child' : 'waiting for runId'}
+              >
+                Stop
+              </button>
+            )}
+          </div>
           {events.length > 0 && (
             <button
               onClick={() => setEvents([])}
@@ -206,8 +242,14 @@ function EventLine({ event }: { event: StreamEvent }) {
       status: string
       exitCode: number | null
     }
+    const color =
+      e.status === 'completed'
+        ? 'text-green-500'
+        : e.status === 'cancelled'
+          ? 'text-amber-400'
+          : 'text-red-400'
     return (
-      <div className={e.status === 'completed' ? 'text-green-500' : 'text-red-400'}>
+      <div className={color}>
         ▸ run {e.status} (exit {e.exitCode ?? '?'})
       </div>
     )
