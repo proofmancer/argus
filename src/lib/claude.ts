@@ -31,6 +31,13 @@ export type AgentRunOptions = {
   systemPrompt?: string
   model?: string | null
   skills?: string[]
+  /**
+   * Called once with the freshly spawned child process. The caller can
+   * use this to register the process in a kill-from-elsewhere registry
+   * (so a Stop button on a parallel pane can SIGTERM this run). The
+   * child is unspecified if spawn itself fails before this callback.
+   */
+  onChild?: (child: ChildProcessWithoutNullStreams) => void
 }
 
 /**
@@ -93,6 +100,11 @@ export async function* runAgent(opts: AgentRunOptions) {
     child = spawn('claude', args, {
       cwd: opts.cwd,
       env: { ...process.env },
+      // detached:true puts the child in its own process group. SIGTERM
+      // sent to -pid then kills the whole group, including any tool
+      // subprocesses claude spawned. We still wait for the child in the
+      // current process, so the OS treats this as a regular child.
+      detached: true,
     })
   } catch (err) {
     yield {
@@ -102,6 +114,7 @@ export async function* runAgent(opts: AgentRunOptions) {
     yield { type: 'exit', code: 1 }
     return
   }
+  if (opts.onChild) opts.onChild(child)
 
   // Forward stdout as JSONL events. Buffer partial lines across
   // chunks so we never yield half a JSON object.

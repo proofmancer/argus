@@ -3,6 +3,7 @@ import { db, schema } from '@/lib/db'
 import { eq } from 'drizzle-orm'
 import { runAgent, writeAgentSkillConfig } from '@/lib/claude'
 import { resolveAgentCwd } from '@/lib/directories'
+import { registerRun, unregisterRun } from '@/lib/run-registry'
 
 export const runtime = 'nodejs'
 // Allow long-running streams; default Vercel limit is short, but we're
@@ -72,6 +73,9 @@ export async function POST(
   const encoder = new TextEncoder()
   const collected: string[] = []
   let exitCode: number | null = null
+  // Track whether the run was killed via the Stop endpoint so we can
+  // record status='cancelled' instead of 'failed' on a non-zero exit.
+  let cancelled = false
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -94,6 +98,14 @@ export async function POST(
           systemPrompt: agent.systemPrompt ?? '',
           model: agent.model,
           skills: agent.skills ?? [],
+          onChild: (child) => {
+            registerRun(run.id, child)
+            // Detect external SIGTERM (i.e. our Stop endpoint) so we
+            // can persist 'cancelled' instead of 'failed' on exit.
+            child.once('exit', (_code, signal) => {
+              if (signal === 'SIGTERM') cancelled = true
+            })
+          },
         })) {
           send(event as object)
           collected.push(JSON.stringify(event))
@@ -112,10 +124,15 @@ export async function POST(
           type: 'error',
           message: err instanceof Error ? err.message : String(err),
         })
+      } finally {
+        unregisterRun(run.id)
       }
 
-      const status: 'completed' | 'failed' =
-        exitCode === 0 ? 'completed' : 'failed'
+      const status: 'completed' | 'failed' | 'cancelled' = cancelled
+        ? 'cancelled'
+        : exitCode === 0
+          ? 'completed'
+          : 'failed'
       try {
         await db
           .update(schema.runs)
